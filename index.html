@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zaległe wypłaty - wersja interaktywna</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    margin: 15px;
+    background: #f0f4f8;
+    color: #222;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .panel {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+    margin-bottom: 20px;
+    padding: 10px 15px;
+  }
+  .panel h2 {
+    margin: 0 0 10px 0;
+    font-weight: 600;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 6px;
+  }
+  .btn-group {
+    display: flex;
+    gap: 12px;
+  }
+  button.main-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  button.main-btn:hover {
+    background-color: #0056b3;
+  }
+  button.main-btn.expanded {
+    flex: 3;
+  }
+  input[type="number"] {
+    width: 80px;
+    font-size: 1rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-top: 8px;
+  }
+  /* For smaller expanded input */
+  .input-container {
+    margin-top: 8px;
+  }
+  .hidden {
+    display: none;
+  }
+  .small-panel {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .small-panel button {
+    flex: 1;
+    padding: 8px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  .small-panel button:hover {
+    background-color: #a71d2a;
+  }
+  /* Zaliczka panel */
+  #zaliczkaPanel {
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+  #zaliczkaPanel button {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  #zaliczkaPanel button:hover {
+    background-color: #e0a800;
+  }
+  #zaliczkaInput {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  #zaliczkaInput input[type="number"] {
+    flex: 1;
+  }
+  #zaliczkaInput button {
+    flex: none;
+  }
+  /* Kasa panel */
+  #kasaPanel {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+    position: fixed;
+    top: 20px;
+    left: 10%;
+    right: 10%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 9999;
+  }
+  #kasaPanel h2 {
+    margin-top: 0;
+  }
+  #kasaPanel button.close-btn {
+    background-color: #dc3545;
+    margin-top: 15px;
+    width: 100%;
+  }
+  /* Hide kasa panel initially */
+  #kasaPanel.hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>Zaległe wypłaty</h1>
+
+<!-- Panel Krzychu -->
+<div class="panel" id="panelKrzychu">
+  <h2>Krzychu</h2>
+  <div class="btn-group" id="krzychuButtons">
+    <button class="main-btn" id="krzychuGodzinyBtn">GODZINY</button>
+    <button class="main-btn" id="krzychuOpuszczanieBtn">OPUSZCZANIE</button>
+    <button class="main-btn" id="krzychuPieceBtn">PIECE</button>
+  </div>
+  <div class="input-container hidden" id="krzychuGodzinyInputContainer">
+    <input type="number" id="krzychuGodzinyInput" min="0" placeholder="Ilość godzin" />
+    <button id="krzychuGodzinyAddBtn" style="margin-left:10px; background:#28a745;">Dodaj</button>
+  </div>
+</div>
+
+<!-- Panel Kacper -->
+<div class="panel" id="panelKacper">
+  <h2>Kacper</h2>
+  <div class="btn-group" id="kacperButtons">
+    <button class="main-btn" id="kacperPieceBtn">PIECE</button>
+    <button class="main-btn" id="kacperInneBtn">INNE</button>
+  </div>
+  <div class="btn-group hidden" id="kacperInneButtons">
+    <button class="main-btn" id="kacperInneGodzinyBtn" style="background:#17a2b8;">GODZINY</button>
+    <button class="main-btn" id="kacperInneKasaBtn" style="background:#ffc107; color:#212529;">KASA</button>
+  </div>
+  <div class="input-container hidden" id="kacperInneGodzinyInputContainer" style="margin-top:8px;">
+    <input type="number" id="kacperInneGodzinyInput" min="0" placeholder="Ilość godzin (nie przelicza się na kasę)" />
+    <button id="kacperInneGodzinyAddBtn" style="margin-left:10px; background:#28a745;">Dodaj</button>
+  </div>
+  <div class="input-container hidden" id="kacperInneKasaInputContainer" style="margin-top:8px;">
+    <input type="number" id="kacperInneKasaInput" min="0" placeholder="Kwota" />
+    <button id="kacperInneKasaAddBtn" style="margin-left:10px; background:#28a745;">Dodaj</button>
+  </div>
+</div>
+
+<!-- Panel Ile wypłaty? -->
+<div class="panel" id="panelIleWyplaty">
+  <button class="main-btn" id="showKasaBtn" style="background:#6f42c1;">KASA</button>
+</div>
+
+<!-- Mały panel z zerowaniem -->
+<div class="panel small-panel">
+  <button id="resetKrzychuBtn">ZERUJ KRZYCHU</button>
+  <button id="resetKacperBtn">ZERUJ KACPER</button>
+</div>
+
+<!-- Panel Zaliczka -->
+<div class="panel" id="panelZaliczka">
+  <button class="main-btn" id="zaliczkaBtn" style="background:#fd7e14;">ZALICZKA</button>
+  <div id="zaliczkaPanel" class="hidden">
+    <p>Wybierz osobę:</p>
+    <div class="btn-group" style="margin-bottom:10px;">
+      <button id="zaliczkaKrzychuBtn" style="background:#007bff;">Krzychu</button>
+      <button id="zaliczkaKacperBtn" style="background:#28a745;">Kacper</button>
+    </div>
+    <div id="zaliczkaInput" class="hidden">
+      <input type="number" id="zaliczkaAmountInput" min="0" placeholder="Kwota zaliczki" />
+      <button id="zaliczkaAddBtn" style="background:#28a745;">Dodaj</button>
+    </div>
+    <button id="zaliczkaCloseBtn" style="margin-top:10px; background:#dc3545; width:100%;">Zamknij</button>
+  </div>
+</div>
+
+<!-- Panel Kasa podsumowanie -->
+<div id="kasaPanel" class="hidden">
+  <h2>Podsumowanie wypłat</h2>
+  <div id="kasaSummaryContent" style="white-space: pre-wrap; font-family: monospace;"></div>
+  <button class="close-btn" id="kasaCloseBtn">Cofnij</button>
+</div>
+
+<script>
+  // Stałe
+  const stawkaGodzina = 24;
+  const stawkaPiec = 200;
+  const stawkaOpuszczanie = 450;
+
+  // Dane przechowywane
+  let dane = {
+    krzychu: {
+      godziny: 0,
+      piece: 0,
+      opuszczanie: 0,
+      zaliczka: 0,
+    },
+    kacper: {
+      piece: 0,
+      inneGodziny: 0,
+      inneKasa: 0,
+      zaliczka: 0,
+    },
+  };
+
+  // --- Funkcje zapisu/odczytu localStorage
+  function zapiszDane() {
+    localStorage.setItem("zalegleWplatyDane", JSON.stringify(dane));
+  }
+  function wczytajDane() {
+    const saved = localStorage.getItem("zalegleWplatyDane");
+    if (saved) {
+      dane = JSON.parse(saved);
+    }
+  }
+
+  // --- UI Elements
+  const krzychuGodzinyBtn = document.getElementById("krzychuGodzinyBtn");
+  const krzychuGodzinyInputContainer = document.getElementById("krzychuGodzinyInputContainer");
+  const krzychuGodzinyInput = document.getElementById("krzychuGodzinyInput");
+  const krzychuGodzinyAddBtn = document.getElementById("krzychuGodzinyAddBtn");
+
+  const krzychuOpuszczanieBtn = document.getElementById("krzychuOpuszczanieBtn");
+  const krzychuPieceBtn = document.getElementById("krzychuPieceBtn");
+
+  const kacperPieceBtn = document.getElementById("kacperPieceBtn");
+  const kacperInneBtn = document.getElementById("kacperInneBtn");
+  const kacperInneButtons = document.getElementById("kacperInneButtons");
+
+  const kacperInneGodzinyBtn = document.getElementById("kacperInneGodzinyBtn");
+  const kacperInneKasaBtn = document.getElementById("kacperInneKasaBtn");
+
+  const kacperInneGodzinyInputContainer = document.getElementById("kacperInneGodzinyInputContainer");
+  const kacperInneGodzinyInput = document.getElementById("kacperInneGodzinyInput");
+  const kacperInneGodzinyAddBtn = document.getElementById("kacperInneGodzinyAddBtn");
+
+  const kacperInneKasaInputContainer = document.getElementById("kacperInneKasaInputContainer");
+  const kacperInneKasaInput = document.getElementById("kacperInneKasaInput");
+  const kacperInneKasaAddBtn = document.getElementById("kacperInneKasaAddBtn");
+
+  const showKasaBtn = document.getElementById("showKasaBtn");
+  const kasaPanel = document.getElementById("kasaPanel");
+  const kasaSummaryContent = document.getElementById("kasaSummaryContent");
+  const kasaCloseBtn = document.getElementById("kasaCloseBtn");
+
+  const resetKrzychuBtn = document.getElementById("resetKrzychuBtn");
+  const resetKacperBtn = document.getElementById("resetKacperBtn");
+
+  const zaliczkaBtn = document.getElementById("zaliczkaBtn");
+  const zaliczkaPanel = document.getElementById("zaliczkaPanel");
+  const zaliczkaKrzychuBtn = document.getElementById("zaliczkaKrzychuBtn");
+  const zaliczkaKacperBtn = document.getElementById("zaliczkaKacperBtn");
+  const zaliczkaInput = document.getElementById("zaliczkaInput");
+  const zaliczkaAmountInput = document.getElementById("zaliczkaAmountInput");
+  const zaliczkaAddBtn = document.getElementById("zaliczkaAddBtn");
+  const zaliczkaCloseBtn = document.getElementById("zaliczkaCloseBtn");
+
+  // --- Logika i eventy
+
+  // Krzychu godziny - rozsuń / ukryj input
+  krzychuGodzinyBtn.addEventListener("click", () => {
+    if (krzychuGodzinyInputContainer.classList.contains("hidden")) {
+      krzychuGodzinyInputContainer.classList.remove("hidden");
+      krzychuGodzinyBtn.classList.add("expanded");
+      // Ukryj inne przyciski
+      krzychuOpuszczanieBtn.style.display = "none";
+      krzychuPieceBtn.style.display = "none";
+    } else {
+      krzychuGodzinyInputContainer.classList.add("hidden");
+      krzychuGodzinyBtn.classList.remove("expanded");
+      krzychuOpuszczanieBtn.style.display = "";
+      krzychuPieceBtn.style.display = "";
+    }
+  });
+  // Dodaj godziny Krzychu
+  krzychuGodzinyAddBtn.addEventListener("click", () => {
+    const val = Number(krzychuGodzinyInput.value);
+    if (val > 0) {
+      dane.krzychu.godziny += val;
+      zapiszDane();
+      krzychuGodzinyInput.value = "";
+      alert(`Dodano ${val} godzin Krzychu.`);
+      krzychuGodzinyInputContainer.classList.add("hidden");
+      krzychuGodzinyBtn.classList.remove("expanded");
+      krzychuOpuszczanieBtn.style.display = "";
+      krzychuPieceBtn.style.display = "";
+    }
+  });
+
+  // Opuszczanie Krzychu - dodaj 450 zł
+  krzychuOpuszczanieBtn.addEventListener("click", () => {
+    dane.krzychu.opuszczanie += 1;
+    zapiszDane();
+    alert("Dodano 1 opuszczanie (450 zł) Krzychu.");
+  });
+
+  // Piece Krzychu - dodaj 1 piec
+  krzychuPieceBtn.addEventListener("click", () => {
+    dane.krzychu.piece += 1;
+    zapiszDane();
+    alert("Dodano 1 piec Krzychu.");
+  });
+
+  // Kacper Piece - dodaj 1 piec
+  kacperPieceBtn.addEventListener("click", () => {
+    dane.kacper.piece += 1;
+    zapiszDane();
+    alert("Dodano 1 piec Kacper.");
+  });
+
+  // Kacper INNE - pokaz / ukryj dodatkowe przyciski
+  kacperInneBtn.addEventListener("click", () => {
+    const hidden = kacperInneButtons.classList.contains("hidden");
+    if (hidden) {
+      kacperInneButtons.classList.remove("hidden");
+      kacperPieceBtn.style.display = "none";
+      kacperInneBtn.textContent = "ZAMKNIJ";
+    } else {
+      kacperInneButtons.classList.add("hidden");
+      kacperPieceBtn.style.display = "";
+      kacperInneBtn.textContent = "INNE";
+      kacperInneGodzinyInputContainer.classList.add("hidden");
+      kacperInneKasaInputContainer.classList.add("hidden");
+    }
+  });
+
+  // Kacper INNE GODZINY - rozsuń input
+  kacperInneGodzinyBtn.addEventListener("click", () => {
+    const hidden = kacperInneGodzinyInputContainer.classList.contains("hidden");
+    if (hidden) {
+      kacperInneGodzinyInputContainer.classList.remove("hidden");
+      kacperInneKasaInputContainer.classList.add("hidden");
+    } else {
+      kacperInneGodzinyInputContainer.classList.add("hidden");
+    }
+  });
+  // Kacper INNE GODZINY - dodaj godziny (nie przelicza się na kasę)
+  kacperInneGodzinyAddBtn.addEventListener("click", () => {
+    const val = Number(kacperInneGodzinyInput.value);
+    if (val > 0) {
+      dane.kacper.inneGodziny += val;
+      zapiszDane();
+      kacperInneGodzinyInput.value = "";
+      alert(`Dodano ${val} godzin (INNE) Kacper.`);
+      kacperInneGodzinyInputContainer.classList.add("hidden");
+    }
+  });
+
+  // Kacper INNE KASA - rozsuń input
+  kacperInneKasaBtn.addEventListener("click", () => {
+    const hidden = kacperInneKasaInputContainer.classList.contains("hidden");
+    if (hidden) {
+      kacperInneKasaInputContainer.classList.remove("hidden");
+      kacperInneGodzinyInputContainer.classList.add("hidden");
+    } else {
+      kacperInneKasaInputContainer.classList.add("hidden");
+    }
+  });
+  // Kacper INNE KASA - dodaj kwotę
+  kacperInneKasaAddBtn.addEventListener("click", () => {
+    const val = Number(kacperInneKasaInput.value);
+    if (val > 0) {
+      dane.kacper.inneKasa += val;
+      zapiszDane();
+      kacperInneKasaInput.value = "";
+      alert(`Dodano ${val} zł (INNE kasa) Kacper.`);
+      kacperInneKasaInputContainer.classList.add("hidden");
+    }
+  });
+
+  // Pokaż podsumowanie kasy
+  showKasaBtn.addEventListener("click", () => {
+    wczytajDane();
+    const krzychuGodzinyKasa = dane.krzychu.godziny * stawkaGodzina;
+    const krzychuPieceKasa = dane.krzychu.piece * stawkaPiec;
+    const krzychuOpuszczanieKasa = dane.krzychu.opuszczanie * stawkaOpuszczanie;
+    const krzychuZaleglosc = krzychuGodzinyKasa + krzychuPieceKasa + krzychuOpuszczanieKasa - dane.krzychu.zaliczka;
+
+    const kacperGodzinyKasa = dane.kacper.inneGodziny * stawkaGodzina; // inne godziny
+    const kacperPieceKasa = dane.kacper.piece * stawkaPiec;
+    const kacperInneKasa = dane.kacper.inneKasa;
+    const kacperZaleglosc = kacperGodzinyKasa + kacperPieceKasa + kacperInneKasa - dane.kacper.zaliczka;
+
+    kasaSummaryContent.textContent = 
+`Godzin: ${dane.krzychu.godziny}
+Piece Krzychu: ${dane.krzychu.piece}
+Opuszczanie: ${dane.krzychu.opuszczanie}
+
+Piece Kacper: ${dane.kacper.piece}
+Inne godziny Kacper: ${dane.kacper.inneGodziny}
+Inna kasa Kacper: ${dane.kacper.inneKasa}
+
+Zaległości: ${krzychuZaleglosc} zł u Krzycha i ${kacperZaleglosc} zł u Kacpra.`;
+    kasaPanel.classList.remove("hidden");
+  });
+
+  kasaCloseBtn.addEventListener("click", () => {
+    kasaPanel.classList.add("hidden");
+  });
+
+  // Reset Krzychu
+  resetKrzychuBtn.addEventListener("click", () => {
+    if (confirm("Czy na pewno chcesz wyzerować dane Krzychu?")) {
+      dane.krzychu.godziny = 0;
+      dane.krzychu.piece = 0;
+      dane.krzychu.opuszczanie = 0;
+      dane.krzychu.zaliczka = 0;
+      zapiszDane();
+      alert("Dane Krzychu zostały wyzerowane.");
+    }
+  });
+
+  // Reset Kacper
+  resetKacperBtn.addEventListener("click", () => {
+    if (confirm("Czy na pewno chcesz wyzerować dane Kacpra?")) {
+      dane.kacper.piece = 0;
+      dane.kacper.inneGodziny = 0;
+      dane.kacper.inneKasa = 0;
+      dane.kacper.zaliczka = 0;
+      zapiszDane();
+      alert("Dane Kacpra zostały wyzerowane.");
+    }
+  });
+
+  // Zaliczkowanie - pokaz panel
+  zaliczkaBtn.addEventListener("click", () => {
+    zaliczkaPanel.classList.remove("hidden");
+  });
+  zaliczkaCloseBtn.addEventListener("click", () => {
+    zaliczkaPanel.classList.add("hidden");
+  });
+
+  // Wybór osoby do zaliczki
+  let zaliczkaWybranaOsoba = null;
+  zaliczkaKrzychuBtn.addEventListener("click", () => {
+    zaliczkaWybranaOsoba = "krzychu";
+    zaliczkaInput.textContent = "Krzychu";
+  });
+  zaliczkaKacperBtn.addEventListener("click", () => {
+    zaliczkaWybranaOsoba = "kacper";
+    zaliczkaInput.textContent = "Kacper";
+  });
+
+  // Dodaj zaliczkę
+  zaliczkaAddBtn.addEventListener("click", () => {
+    const amount = Number(zaliczkaAmountInput.value);
+    if (zaliczkaWybranaOsoba && amount > 0) {
+      dane[zaliczkaWybranaOsoba].zaliczka += amount;
+      zapiszDane();
+      alert(`Dodano zaliczkę ${amount} zł dla ${zaliczkaWybranaOsoba}.`);
+      zaliczkaAmountInput.value = "";
+      zaliczkaPanel.classList.add("hidden");
+    } else {
+      alert("Wybierz osobę i wpisz poprawną kwotę.");
+    }
+  });
+
+  // Inicjalizacja danych po załadowaniu strony
+  document.addEventListener("DOMContentLoaded", () => {
+    wczytajDane();
+  });
+</script>
